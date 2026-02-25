@@ -1,0 +1,46 @@
+{
+    "syndicate-to": [
+        {
+            "uid": "bridgy_fed",
+            "name": "Bridgy Fed",
+            "service": {
+                "name": "Bridgy Fed",
+                "url": "https://fed.brid.gy/",
+                "photo": "https://brid.gy/static/bridgy_logo_128.jpg"
+            },
+            "user": {
+                "name": "adamsaunders.net",
+                "url": "https://fed.brid.gy/web/adamsaunders.net/home",
+                "photo": "https://adamsaunders.net/assets/images/headshot_square.jpg"
+            }
+        },
+        {
+            "uid": "bluesky",
+            "name": "Bluesky",
+            "service": {
+                "name": "Bluesky",
+                "url": "https://bsky.app/",
+                "photo": "https://web-cdn.bsky.app/static/apple-touch-icon.png"
+            },
+            "user": {
+                "name": "@adamsaunders.net",
+                "url": "https://bsky.app/profile/adamsaunders.net",
+                "photo": "https://cdn.bsky.app/img/avatar/plain/did:plc:betxd4ieuf6y5ativp7aiz3w/bafkreigqmq2fnyai2nrsw3zp7gvalekecaz6t4vhyf3mfpfvufsjqa5xw4@jpeg"
+            }
+        },
+        {
+            "uid": "mastodon",
+            "name": "Mastodon",
+            "service": {
+                "name": "Mastodon",
+                "url": "https://indieweb.social/",
+                "photo": "view-source:https://indieweb.social/packs/assets/apple-touch-icon-1024x1024-B3Tu3EqI.png"
+            },
+            "user": {
+                "name": "@adamsaunders.net",
+                "url": "https://indieweb.social/@adamsaunders.net",
+                "photo": "https://cdn.masto.host/indiewebsocial/accounts/avatars/115/338/993/822/150/008/original/fc7acd98674cffef.jpg"
+            }
+        }
+    ]
+}
