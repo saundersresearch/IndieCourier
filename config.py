@@ -21,8 +21,13 @@ class SyndicationEndpoint(BaseModel):
 class Config(BaseSettings):
     me: HttpUrl
     token_endpoint: HttpUrl = Field(..., alias="token-endpoint")
-    media_endpoint: HttpUrl = Field(..., alias="media-endpoint")
+    site_url: HttpUrl = Field(..., alias="site-url")
     syndicate_to: List[SyndicationEndpoint] = Field(default_factory=list, alias="syndicate-to")
+    github_repo: str 
+    github_token: str
+    github_user: str
+    content_dir: str
+    media_dir: str
 
     # Load env vars from .env and syndication endpoints from syndicate-to.json
     model_config = SettingsConfigDict(
