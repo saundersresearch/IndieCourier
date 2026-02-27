@@ -5,8 +5,8 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import HttpUrl
 
-from config import Config, load_config
-from utils import is_url_equal
+from utils import is_url_equal, load_config
+from schemas import Config
 
 security = HTTPBearer(auto_error=False)
 

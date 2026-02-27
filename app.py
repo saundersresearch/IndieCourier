@@ -1,33 +1,27 @@
+import base64
+import uuid
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Literal, Dict
+from time import time
+from datetime import datetime
+from typing import Dict, List, Literal
+from urllib.parse import urljoin
+import yaml
 
 import markdown
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, UploadFile, File
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from github import Github
-from pydantic import BaseModel, Field, HttpUrl, ValidationError
+from github import Github, GithubException
+from pydantic import ValidationError
+from slugify import slugify
 
-import base64
-from config import Config, SyndicationEndpoint, load_config
 from auth import verify_auth_token
-import uuid
-from urllib.parse import urljoin
-from time import time
+from utils import load_config, mf2_to_jekyll
+from schemas import Config, MicropubConfigResponse, MicropubRequest, GithubFileResponse
 
 app = FastAPI()
-
-class MicropubConfigResponse(BaseModel):
-    me: HttpUrl | None = None
-    token_endpoint: HttpUrl | None = Field(None, alias="token-endpoint")
-    media_endpoint: HttpUrl | None = Field(None, alias="media-endpoint")
-    syndicate_to: List[SyndicationEndpoint] | None = Field(None, alias="syndicate-to")
-
-    model_config = {
-        "populate_by_name": True,
-    }
-
 
 @app.get("/micropub", response_model_exclude_none=True)
 async def micropub_query(
@@ -61,23 +55,14 @@ async def github_login(config: Config = Depends(load_config)):
     except Exception:
         raise HTTPException(status_code=500, detail={"error": "github_login_failed", "error_description": "Failed to authenticate with GitHub"})
 
-class GithubFileResponse(BaseModel):
-    class ContentFile(BaseModel):
-        path: str
-    class Commit(BaseModel):
-        sha: str
 
-    content: ContentFile
-    commit: Commit
-
-@app.post("/media", response_model_exclude_none=True)
+@app.post("/media", response_model_exclude_none=True, status_code=201)
 async def media_endpoint(
-    response: Response,
     github: Github = Depends(github_login),
     token_data: Dict = Depends(verify_auth_token),
     config: Config = Depends(load_config),
     file: UploadFile = File(..., description="Media file to upload"),
-):    
+):
     # Filename should be timestamp + truncated UUID
     timestamp = int(time())
     uuid_str = str(uuid.uuid4())[:8]
@@ -87,21 +72,98 @@ async def media_endpoint(
     repo = github.get_user().get_repo(config.github_repo)
     contents = await file.read()
     encoded = base64.b64encode(contents).decode("utf-8")
-    github_response_dict = repo.create_file(
-        path=f"{config.media_dir}/{filename}",
-        message=f"Upload {config.media_dir}/{filename}",
-        content=encoded,
-    )
     try:
+        github_response_dict = repo.create_file(
+            path=f"{config.media_dir}/{filename}",
+            message=f"Upload {config.media_dir}/{filename}",
+            content=encoded,
+        )
         github_response = GithubFileResponse.model_validate(github_response_dict, from_attributes=True)
-    except ValidationError:
-        raise HTTPException(status_code=500, detail={"error": "github_response_invalid", "error_description": "Received an unexpected response from GitHub"})
+    except (ValidationError, GithubException) as e:
+        raise HTTPException(status_code=500, detail={"error": "github_response_invalid", "error_description": f"Received an unexpected response from GitHub: {e}"})
     
     github_media_url = urljoin(str(config.site_url), f"/{github_response.content.path}")
     return JSONResponse(
         status_code=201,
         content={"url": github_media_url},
         headers={"Location": github_media_url},
+    )
+
+
+def mf2_form_to_json(form: Form) -> Dict:
+    grouped = defaultdict(list)
+    mf2_type = "entry"
+    for key, value in form.multi_items():
+        if key == "h":
+            mf2_type = value
+        else:
+            grouped[key].append(value)
+    
+    response ={
+        "type": [f"h-{mf2_type}"],
+        "properties": dict(grouped),
+    }
+    return response
+
+
+async def parse_micropub_request(
+    request: Request,
+) -> MicropubRequest:
+    if request.headers.get("Content-Type", "").startswith("application/json"):
+        response_json = await request.json()
+        return MicropubRequest.model_validate(response_json)
+    elif request.headers.get("Content-Type", "").startswith("application/x-www-form-urlencoded"):
+        form = await request.form()
+        response_json = mf2_form_to_json(form)
+        return MicropubRequest.model_validate(response_json)
+    else:
+        raise HTTPException(status_code=400, detail={"error": "invalid_content_type", "error_description": "Unsupported Content-Type"})
+
+@app.post("/micropub", response_model_exclude_none=True, status_code=202)
+async def micropub_endpoint(
+    github: Github = Depends(github_login),
+    token_data: Dict = Depends(verify_auth_token),
+    config: Config = Depends(load_config),
+    micropub_request: Dict = Depends(parse_micropub_request)
+):
+    print("Received micropub request:", micropub_request)
+    
+    # Convert mf2 to frontmatter and mp commands
+    micropub_request_dict = micropub_request.model_dump()
+    frontmatter, content = mf2_to_jekyll(micropub_request_dict)
+    frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+
+    # Determine filename based on timestamp and slugified title or URL
+    timestamp = int(time())
+    dt = datetime.fromtimestamp(timestamp)
+    if frontmatter.get("title"):
+        slug = slugify(frontmatter["title"])
+        filename = f"{dt:%Y-%m-%d}-{slug}.md"
+        dirname = config.article_dir
+        post_url = urljoin(str(config.site_url), config.article_dir.lstrip("_") + f"/{dt:%Y}/{dt:%m}/{dt:%d}/{slug}")
+    else:
+        slug = slugify(str(timestamp))
+        filename = f"{slug}.md"
+        dirname = config.note_dir
+        post_url = urljoin(str(config.site_url), config.note_dir.lstrip("_") + f"/{dt:%Y}/{dt:%m}/{dt:%d}/{slug}")
+
+    # Write to GitHub
+    filecontent = f"---\n{frontmatter_yaml}---\n{content}"
+    repo = github.get_user().get_repo(config.github_repo)
+    try:
+        github_response_dict = repo.create_file(
+            path=f"{dirname}/{filename}",
+            message=f"Create {dirname}/{filename}",
+            content=filecontent,
+        )
+        github_response = GithubFileResponse.model_validate(github_response_dict, from_attributes=True)
+    except (ValidationError, GithubException) as e:
+        raise HTTPException(status_code=500, detail={"error": "github_response_invalid", "error_description": "Received an unexpected response from GitHub"})
+
+    return JSONResponse(
+        status_code=202,
+        content={"url": post_url},
+        headers={"Location": post_url},
     )
 
 templates = Jinja2Templates(directory="templates")

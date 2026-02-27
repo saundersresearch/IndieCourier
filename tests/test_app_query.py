@@ -1,6 +1,6 @@
 from urllib.parse import urljoin
 
-from app import MicropubConfigResponse
+from schemas import MicropubConfigResponse
 from tests.conftest import FAKE_CONFIG
 
 FAKE_CONFIG_RESPONSE = MicropubConfigResponse(

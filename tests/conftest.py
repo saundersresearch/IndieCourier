@@ -1,12 +1,12 @@
 from unittest.mock import AsyncMock, patch
-from urllib.parse import urljoin
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic_settings import SettingsConfigDict
 
-from app import MicropubConfigResponse, app
-from config import Config, load_config
+from app import app
+from utils import load_config
+from schemas import Config
 
 class FakeConfig(Config):
     model_config = SettingsConfigDict(
@@ -27,8 +27,9 @@ FAKE_CONFIG = FakeConfig(
     github_repo="example-repo",
     github_token="fake-github-token",
     github_user="fake-github-user",
-    content_dir="_notes",
     media_dir="assets/images/notes",
+    article_dir="_posts",
+    note_dir="_notes",
 )
 
 FAKE_TOKEN_RESPONSE = """
