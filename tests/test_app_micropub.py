@@ -75,7 +75,7 @@ def test_media_endpoint_form(client):
         )
     assert response.status_code == 202
     url = str(response.headers["Location"])
-    expected_url_pattern = rf"{urljoin(str(FAKE_CONFIG.site_url), '/')}{re.escape(FAKE_CONFIG.article_dir.lstrip("_"))}/\d{{4}}/\d{{2}}/\d{{2}}/test-post"
+    expected_url_pattern = rf"{urljoin(str(FAKE_CONFIG.site_url), '/')}posts/\d{{4}}/\d{{2}}/\d{{2}}/test-post"
     assert re.fullmatch(expected_url_pattern, url)
 
 def test_media_endpoint_json(client):
@@ -95,5 +95,5 @@ def test_media_endpoint_json(client):
         )
     assert response.status_code == 202
     url = str(response.headers["Location"])
-    expected_url_pattern = rf"{urljoin(str(FAKE_CONFIG.site_url), '/')}{re.escape(FAKE_CONFIG.article_dir.lstrip("_"))}/\d{{4}}/\d{{2}}/\d{{2}}/test-post"
+    expected_url_pattern = rf"{urljoin(str(FAKE_CONFIG.site_url), '/')}posts/\d{{4}}/\d{{2}}/\d{{2}}/test-post"
     assert re.fullmatch(expected_url_pattern, url)

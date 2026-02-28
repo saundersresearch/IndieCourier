@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -26,8 +26,11 @@ class Config(BaseSettings):
     github_token: str
     github_user: str
     media_dir: str
-    article_dir: str = "_posts"
-    note_dir: str = "_notes"
+    # Templates have access to date, slug, and site_url 
+    article_filepath_template: str = "_posts/{date:%Y-%m-%d}-{slug}.md"
+    article_url_template: str = "{site_url}/posts/{date:%Y/%m/%d}/{slug}"
+    note_filepath_template: str = "_notes/{slug}.md"
+    note_url_template: str = "{site_url}/notes/{date:%Y/%m/%d}/{slug}"
     tz: ZoneInfo = ZoneInfo("UTC")
 
     # Load env vars from .env and syndication endpoints from syndicate-to.json
@@ -74,7 +77,10 @@ class GithubFileResponse(BaseModel):
     content: ContentFile
     commit: Commit
 
-
 class MicropubRequest(BaseModel):
     type: List[str]
     properties: Dict[str, List[str | Dict]]
+
+class MicropubActionRequest(BaseModel):
+    action: Literal["update", "delete", "undelete"]
+    url: HttpUrl

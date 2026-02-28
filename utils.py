@@ -1,5 +1,8 @@
 from urllib.parse import urlsplit
 
+import httpx
+from datetime import datetime
+import mf2py 
 from functools import lru_cache
 from typing import Dict, Tuple
 
@@ -50,3 +53,35 @@ def mf2_to_jekyll(mf2: Dict):
         content = content["html"]
 
     return frontmatter, content
+
+def find_first_key(data, target_key):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == target_key:
+                return value
+            result = find_first_key(value, target_key)
+            if result is not None:
+                return result
+
+    elif isinstance(data, list):
+        for item in data:
+            result = find_first_key(item, target_key)
+            if result is not None:
+                return result
+
+    return None
+
+def get_datetime(mf2_parser) -> datetime | None:
+    # Loop over nested dictionary items and look for dt-published
+    dt_published = find_first_key(mf2_parser, "published")
+    if isinstance(dt_published, list) and len(dt_published) == 1:
+        dt_published = dt_published[0]
+    if dt_published:
+        return datetime.fromisoformat(dt_published)
+    return None
+
+def is_note(mf2_parser) -> bool:
+    name = find_first_key(mf2_parser, "name")
+    if name:
+        return False
+    return True
