@@ -32,7 +32,7 @@ FAKE_CONFIG = FakeConfig(
     article_url_template="{site_url}/posts/{date:%Y/%m/%d}/{slug}",
     note_filepath_template="_notes/{slug}.md",
     note_url_template="{site_url}/notes/{date:%Y/%m/%d}/{slug}",
-    tz="UTC",
+    timezone="UTC",
 )
 
 FAKE_TOKEN_RESPONSE = """

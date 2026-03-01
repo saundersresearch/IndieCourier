@@ -31,7 +31,7 @@ class Config(BaseSettings):
     article_url_template: str = "{site_url}/posts/{date:%Y/%m/%d}/{slug}"
     note_filepath_template: str = "_notes/{slug}.md"
     note_url_template: str = "{site_url}/notes/{date:%Y/%m/%d}/{slug}"
-    tz: ZoneInfo = ZoneInfo("UTC")
+    timezone: ZoneInfo = ZoneInfo("UTC")
 
     mf2_to_replace : Dict = {
         "name": "title",
