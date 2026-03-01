@@ -1,3 +1,4 @@
+from copy import deepcopy
 from urllib.parse import urlsplit
 
 import httpx
@@ -21,16 +22,15 @@ def is_url_equal(url1: str, url2: str) -> bool:
 def load_config():
     return Config()
 
-def mf2_to_jekyll(mf2: Dict):
-    frontmatter = {}
+def replace_keys(d: Dict, key_map: Dict[str, str]) -> Dict:
+    for old_key, new_key in key_map.items():
+        if old_key in d:
+            d[new_key] = d.pop(old_key)
+    return d
 
-    mf2_to_replace = {
-        "name": "title",
-        "category": "tags",
-        "mp-syndicate-to": "syndicate_to",
-        "syndicate-to": "syndicate_to",
-        "value": "url"
-    }
+def mf2_to_jekyll(mf2: Dict, mf2_to_replace: Dict):
+    frontmatter = {}
+    keep_as_list = ("tags", "syndicate_to")
 
     type = mf2.get("type", [])
     if type:
@@ -38,14 +38,11 @@ def mf2_to_jekyll(mf2: Dict):
     frontmatter["type"] = type
 
     properties = mf2.get("properties", {})
-    for key, value in properties.items():
-        if isinstance(value, list) and len(value) == 1:
-            value = value[0]
-        if key in mf2_to_replace:
-            key = mf2_to_replace[key]
-            frontmatter[key] = value
-        else:
-            frontmatter[key] = value
+    properties = replace_keys(properties, mf2_to_replace)
+
+    for k, v in properties.items():
+        if k not in keep_as_list and isinstance(v, list) and len(v) == 1:
+            frontmatter[k] = v[0]
 
     # Content can be a string or HTML 
     content = frontmatter.pop("content", "")
@@ -85,3 +82,52 @@ def is_note(mf2_parser) -> bool:
     if name:
         return False
     return True
+
+
+def apply_patch(data, replace=None, add=None, delete=None):
+    result = deepcopy(data)
+    replace = replace or {}
+    add = add or {}
+
+    # Delete can be either a list of keys or a dict with values to remove
+    if isinstance(delete, list):
+        for k in delete:
+            result.pop(k, None)
+        delete_dict = {}
+    elif isinstance(delete, dict):
+        delete_dict = delete
+    else:
+        delete_dict = {}
+
+    for k, v in replace.items():
+        if isinstance(v, dict) and isinstance(result.get(k), dict):
+            result[k] = apply_patch(result[k], replace=v, add=None, delete=None)
+        else:
+            result[k] = deepcopy(v)
+
+    for k, v in add.items():
+        if isinstance(result.get(k), list) and isinstance(v, list):
+            for item in v:
+                if item not in result[k]:
+                    result[k].append(item)
+        else:
+            result[k] = deepcopy(v)
+
+    for k, vals in delete_dict.items():
+        if k not in result:
+            continue
+
+        target = result[k]
+        if isinstance(target, list) and isinstance(vals, list):
+            result[k] = [item for item in target if item not in vals]
+            if not result[k]:
+                result.pop(k, None)
+        elif isinstance(target, dict) and isinstance(vals, list):
+            for nested in vals:
+                target.pop(nested, None)
+            if not target:
+                result.pop(k, None)
+        else:
+            result.pop(k, None)
+
+    return result

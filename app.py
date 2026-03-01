@@ -21,7 +21,7 @@ from slugify import slugify
 
 from auth import verify_auth_token
 from schemas import Config, GithubFileResponse, MicropubActionRequest, MicropubConfigResponse, MicropubRequest
-from utils import get_datetime, is_note, load_config, mf2_to_jekyll
+from utils import get_datetime, is_note, load_config, mf2_to_jekyll, apply_patch, replace_keys
 
 app = FastAPI()
 
@@ -144,7 +144,7 @@ async def parse_micropub_request(
 def create_post(github: Github, micropub_request: MicropubRequest, config: Config) -> str:
     # Convert mf2 to frontmatter and mp commands
     micropub_request_dict = micropub_request.model_dump()
-    frontmatter, content = mf2_to_jekyll(micropub_request_dict)
+    frontmatter, content = mf2_to_jekyll(micropub_request_dict, config.mf2_to_replace)
     frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
 
     # Determine filename based on timestamp and slugified title or URL
@@ -186,17 +186,14 @@ def delete_post(github: Github, url: str, config: Config) -> Response:
     if is_note(mf2_parser):
         template_parsed = parse(config.note_url_template, url)
         path = config.note_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
-        print(f"Identified as note: {url} -> {path}")
     else:
         template_parsed = parse(config.article_url_template, url)
         path = config.article_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
-        print(f"Identified as article: {url} -> {path}")
 
     # Add published: false to frontmatter
     repo = github.get_user().get_repo(config.github_repo)
     try:
         contents = repo.get_contents(path)
-        print(contents)
         file_content = contents.decoded_content.decode("utf-8")
         if "---" in file_content:
             frontmatter_raw, body = file_content.split("---", 2)[1:]
@@ -235,11 +232,9 @@ def undelete_post(github: Github, url: str, config: Config) -> Response:
     if is_note(mf2_parser):
         template_parsed = parse(config.note_url_template, url)
         path = config.note_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
-        print(f"Identified as note: {url} -> {path}")
     else:
         template_parsed = parse(config.article_url_template, url)
         path = config.article_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
-        print(f"Identified as article: {url} -> {path}")
 
     # Remove published: false from frontmatter if it exists
     repo = github.get_user().get_repo(config.github_repo)
@@ -272,6 +267,87 @@ def undelete_post(github: Github, url: str, config: Config) -> Response:
         
     return Response(status_code=204)
 
+
+def update_post(github: Github, url: str, update_data: dict, config: Config) -> Response:
+    url = str(url).rstrip("/")
+    site_url = str(config.site_url).rstrip("/")
+    if not url.startswith(site_url):
+        raise HTTPException(status_code=400, detail={"error": "invalid_url", "error_description": "URL does not belong to this site"})
+    
+    # Replace keys
+    if "add" in update_data and isinstance(update_data["add"], dict):
+        update_data["add"] = replace_keys(update_data["add"], config.mf2_to_replace)
+    if "replace" in update_data and isinstance(update_data["replace"], dict):
+        update_data["replace"] = replace_keys(update_data["replace"], config.mf2_to_replace)
+    if "delete" in update_data and isinstance(update_data["delete"], dict):
+        update_data["delete"] = replace_keys(update_data["delete"], config.mf2_to_replace)
+
+    # Parse the URL 
+    mf2_parser = mf2py.parse(url=url)
+    if is_note(mf2_parser):
+        template_parsed = parse(config.note_url_template, url)
+        path = config.note_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
+    else:
+        template_parsed = parse(config.article_url_template, url)
+        path = config.article_filepath_template.format(site_url="", date=template_parsed["date"], slug=template_parsed["slug"])
+
+    # Remove published: false from frontmatter if it exists
+    repo = github.get_user().get_repo(config.github_repo)
+    try:
+        contents = repo.get_contents(path)
+        file_content = contents.decoded_content.decode("utf-8")
+        if "---" in file_content:
+            frontmatter_raw, body = file_content.split("---", 2)[1:]
+            frontmatter = yaml.safe_load(frontmatter_raw)
+        else:
+            frontmatter = {}
+            body = file_content
+
+        # First, check if content is in the update
+        if "add" in update_data:
+            if isinstance(update_data["add"], dict) and "content" in update_data["add"]:
+                # Check for HTML
+                if isinstance(update_data["add"]["content"], dict) and "html" in update_data["add"]["content"]:
+                    body = update_data["add"]["content"]["html"]
+                else:
+                    body = update_data["add"]["content"]
+                
+                update_data["add"].pop("content")
+        
+        if "replace" in update_data:
+            if isinstance(update_data["replace"], dict) and "content" in update_data["replace"]:
+                # Check for HTML
+                if isinstance(update_data["replace"]["content"], dict) and "html" in update_data["replace"]["content"]:
+                    body = update_data["replace"]["content"]["html"]
+                else:
+                    body = update_data["replace"]["content"]
+
+                update_data["replace"].pop("content")
+            
+        if "delete" in update_data:
+            if isinstance(update_data["delete"], dict) and "content" in update_data["delete"]:
+                body = ""
+                update_data["delete"].pop("content")
+
+        frontmatter = apply_patch(frontmatter, update_data.get("replace"), update_data.get("add"), update_data.get("delete"))
+            
+        new_frontmatter_raw = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        new_file_content = f"---\n{new_frontmatter_raw}---{body}"
+
+        repo.update_file(
+            path=path,
+            message=f"Update {path} to undelete",
+            content=new_file_content,
+            sha=contents.sha,
+        )
+    except GithubException as e:
+        if e.status == 404:
+            raise HTTPException(status_code=404, detail={"error": "post_not_found", "error_description": "Could not find a post matching the provided URL"})
+        else:
+            raise HTTPException(status_code=500, detail={"error": "github_error", "error_description": f"GitHub API error: {e}"})
+        
+    return Response(status_code=204)
+
 @app.post("/micropub", response_model_exclude_none=True, status_code=202)
 async def micropub_endpoint(
     github: Github = Depends(github_login),
@@ -279,15 +355,15 @@ async def micropub_endpoint(
     config: Config = Depends(load_config),
     micropub_request: MicropubRequest | MicropubActionRequest = Depends(parse_micropub_request),
 ):
-    print("Received request: ", micropub_request)
     if isinstance(micropub_request, MicropubActionRequest):
         if micropub_request.action == "delete":
-            print(f"Received delete action for URL: {micropub_request.url}")
             response = delete_post(github, micropub_request.url, config)
             return response
         elif micropub_request.action == "undelete":
-            print(f"Received undelete action for URL: {micropub_request.url}")
             response = undelete_post(github, micropub_request.url, config)
+            return response
+        elif micropub_request.action == "update":
+            response = update_post(github, micropub_request.url, micropub_request.model_dump(), config)
             return response
         else:
             raise HTTPException(

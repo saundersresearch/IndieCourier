@@ -33,6 +33,15 @@ class Config(BaseSettings):
     note_url_template: str = "{site_url}/notes/{date:%Y/%m/%d}/{slug}"
     tz: ZoneInfo = ZoneInfo("UTC")
 
+    mf2_to_replace : Dict = {
+        "name": "title",
+        "category": "tags",
+        "mp-syndicate-to": "syndicate_to",
+        "syndicate-to": "syndicate_to",
+        "value": "url"
+    }
+
+
     # Load env vars from .env and syndication endpoints from syndicate-to.json
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -84,3 +93,6 @@ class MicropubRequest(BaseModel):
 class MicropubActionRequest(BaseModel):
     action: Literal["update", "delete", "undelete"]
     url: HttpUrl
+    add: Dict[str, List[str | Dict]] | None = None
+    replace: Dict[str, List[str | Dict]] | None = None
+    delete: Dict[str, List[str | Dict]] | List[str] | None = None

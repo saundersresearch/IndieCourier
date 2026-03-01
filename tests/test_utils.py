@@ -33,3 +33,45 @@ def test_is_note():
     with open("tests/test_note.html") as f:
         mf2_parser = mf2py.parse(doc=f)
     assert is_note(mf2_parser)
+
+def test_apply_patch():
+    from utils import apply_patch
+
+    data = {
+        "name": ["Test Post"],
+        "content": ["This is a test."],
+        "tags": ["test", "example"],
+        "photo": {
+            "url": ["https://photos.example.com/globe.gif"],
+            "alt": ["A globe photo"]
+        },
+        "something_nested": {
+            "delete_this": ["value1", "value2"],
+            "update_this": ["old_value"],
+        }
+    }
+
+    replace = {
+        "name": ["Updated Test Post"],
+        "something_nested": {
+            "update_this": ["new_value"],
+        }
+    }
+    add = {
+        "tags": ["newtag"],
+    }
+    delete = {
+        "tags": ["test"],
+        "something_nested": ["delete_this"],
+    }
+
+    result = apply_patch(data, replace, add, delete)
+    result = apply_patch(result, delete=["photo"])
+    assert result == {
+        "name": ["Updated Test Post"],
+        "content": ["This is a test."],
+        "tags": ["example", "newtag"],
+        "something_nested": {
+            "update_this": ["new_value"],
+        }
+    }
