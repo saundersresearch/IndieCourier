@@ -149,7 +149,7 @@ def create_post(github: Github, micropub_request: MicropubRequest, config: Confi
 
     # Determine filename based on timestamp and slugified title or URL
     timestamp = int(time())
-    dt = datetime.fromtimestamp(timestamp)
+    dt = datetime.fromtimestamp(timestamp, tz=config.timezone)
     site_url = str(config.site_url).rstrip("/")
     if frontmatter.get("title"):
         slug = slugify(frontmatter["title"])

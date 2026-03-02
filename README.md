@@ -4,7 +4,7 @@ A Micropub endpoint implemented in FastAPI.
 
 This project is under development.
 
-#### Note
+#### Known Issues
 In order to parse the date from a provided URL (for updating posts), the site must have a `dt-published` property somewhere in the post's HTML. For example, a Jekyll layout could include something like this:
 
 ```html
@@ -17,5 +17,7 @@ The output would be something like this:
 ```html
 <time class="dt-published" datetime="2025-10-09T00:00:00-05:00">October 9, 2025</time>
 ```
+
+Right now, the undelete option is not supported.
 
 [IndieCourier](https://github.com/saundersresearch/IndieCourier) © 2026 [Adam Saunders](https://adamsaunders.net) (GNU AGPLv3 License). [Modest CSS](https://github.com/markdowncss/modest) by John Otander (MIT License).
