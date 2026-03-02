@@ -79,12 +79,11 @@ async def media_endpoint(
 
     repo = github.get_user().get_repo(config.github_repo)
     contents = await file.read()
-    encoded = base64.b64encode(contents).decode("utf-8")
     try:
         github_response_dict = repo.create_file(
             path=f"{config.media_dir}/{filename}",
             message=f"Upload {config.media_dir}/{filename}",
-            content=encoded,
+            content=contents,
         )
         github_response = GithubFileResponse.model_validate(github_response_dict, from_attributes=True)
     except (ValidationError, GithubException) as e:
