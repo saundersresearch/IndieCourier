@@ -206,7 +206,7 @@ def delete_post(github: Github, url: str, config: Config) -> Response:
             raise HTTPException(status_code=400, detail={"error": "already_deleted", "error_description": "Post is already marked as deleted"})
         frontmatter["published"] = False
         new_frontmatter_raw = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-        new_file_content = f"---\n{new_frontmatter_raw}---{body}"
+        new_file_content = f"---\n{new_frontmatter_raw}---\n{body}"
         repo.update_file(
             path=path,
             message=f"Update {path} to delete",
@@ -252,7 +252,7 @@ def undelete_post(github: Github, url: str, config: Config) -> Response:
             raise HTTPException(status_code=400, detail={"error": "not_deleted", "error_description": "Post is not currently marked as deleted"})
         del frontmatter["published"]
         new_frontmatter_raw = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-        new_file_content = f"---\n{new_frontmatter_raw}---{body}"
+        new_file_content = f"---\n{new_frontmatter_raw}---\n{body}"
         repo.update_file(
             path=path,
             message=f"Update {path} to undelete",
@@ -332,7 +332,7 @@ def update_post(github: Github, url: str, update_data: dict, config: Config) -> 
         frontmatter = apply_patch(frontmatter, update_data.get("replace"), update_data.get("add"), update_data.get("delete"))
             
         new_frontmatter_raw = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-        new_file_content = f"---\n{new_frontmatter_raw}---{body}"
+        new_file_content = f"---\n{new_frontmatter_raw}---\n{body}"
 
         repo.update_file(
             path=path,
