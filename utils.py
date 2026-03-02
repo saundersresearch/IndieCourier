@@ -22,11 +22,20 @@ def is_url_equal(url1: str, url2: str) -> bool:
 def load_config():
     return Config()
 
-def replace_keys(d: Dict, key_map: Dict[str, str]) -> Dict:
-    for old_key, new_key in key_map.items():
-        if old_key in d:
-            d[new_key] = d.pop(old_key)
-    return d
+def replace_keys(obj, key_map: Dict[str, str]):
+    # Recursively replace keys in a nested dictionary or list
+    if isinstance(obj, dict):
+        new_dict = {}
+        for key, value in obj.items():
+            new_key = key_map.get(key, key)
+            new_dict[new_key] = replace_keys(value, key_map)
+        return new_dict
+
+    elif isinstance(obj, list):
+        return [replace_keys(item, key_map) for item in obj]
+
+    else:
+        return obj
 
 def mf2_to_jekyll(mf2: Dict, mf2_to_replace: Dict):
     frontmatter = {}

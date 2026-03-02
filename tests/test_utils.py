@@ -75,3 +75,33 @@ def test_apply_patch():
             "update_this": ["new_value"],
         }
     }
+
+def test_replace_keys():
+    from utils import replace_keys
+
+    data = {
+        "name": ["Test Post"],
+        "content": ["This is a test."],
+        "category": ["test", "example"],
+        "photo": {
+            "value": ["https://photos.example.com/globe.gif"],
+            "alt": ["A globe photo"]
+        }
+    }
+
+    key_map = {
+        "name": "title",
+        "category": "tags",
+        "value": "url",
+    }
+
+    result = replace_keys(data, key_map)
+    assert result == {
+        "title": ["Test Post"],
+        "content": ["This is a test."],
+        "tags": ["test", "example"],
+        "photo": {
+            "url": ["https://photos.example.com/globe.gif"],
+            "alt": ["A globe photo"]
+        }
+    }
