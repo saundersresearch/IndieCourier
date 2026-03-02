@@ -2,6 +2,8 @@
 
 A Micropub endpoint implemented in FastAPI.
 
+This project is under development.
+
 #### Note
 In order to parse the date from a provided URL (for updating posts), the site must have a `dt-published` property somewhere in the post's HTML. For example, a Jekyll layout could include something like this:
 
