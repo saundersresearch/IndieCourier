@@ -41,8 +41,12 @@ def mf2_to_jekyll(mf2: Dict, mf2_to_replace: Dict):
     properties = replace_keys(properties, mf2_to_replace)
 
     for k, v in properties.items():
+        if k.endswith("[]"):
+            k = k[:-2]
         if k not in keep_as_list and isinstance(v, list) and len(v) == 1:
             frontmatter[k] = v[0]
+        else:
+            frontmatter[k] = v
 
     # Content can be a string or HTML 
     content = frontmatter.pop("content", "")

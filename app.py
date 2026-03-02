@@ -371,7 +371,6 @@ async def micropub_endpoint(
                 detail={"error": "unsupported_action", "error_description": f"Action '{micropub_request.action}' is not yet supported"},
             )
     elif isinstance(micropub_request, MicropubRequest):
-        print("Received micropub request:", micropub_request)
         post_url = create_post(github, micropub_request, config)
         return JSONResponse(
             status_code=202,
