@@ -28,6 +28,7 @@ FAKE_CONFIG = FakeConfig(
     github_token="fake-github-token",
     github_user="fake-github-user",
     media_dir="assets/images/notes",
+    media_endpoint="http://localhost:8000/media",
     article_filepath_template="_posts/{date:%Y-%m-%d}-{slug}.md",
     article_url_template="{site_url}/posts/{date:%Y/%m/%d}/{slug}",
     note_filepath_template="_notes/{slug}.md",

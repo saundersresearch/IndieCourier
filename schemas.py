@@ -26,6 +26,7 @@ class Config(BaseSettings):
     github_token: str
     github_user: str
     media_dir: str
+    media_endpoint: str
     # Templates have access to date, slug, and site_url 
     article_filepath_template: str = "_posts/{date:%Y-%m-%d}-{slug}.md"
     article_url_template: str = "{site_url}/posts/{date:%Y/%m/%d}/{slug}"

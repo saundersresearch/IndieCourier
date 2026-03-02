@@ -38,7 +38,7 @@ async def micropub_query(
         return MicropubConfigResponse(
             me=config.me,
             token_endpoint=config.token_endpoint,
-            media_endpoint=urljoin(str(config.site_url), "/media"),
+            media_endpoint=config.media_endpoint,
             syndicate_to=[endpoint.model_dump() for endpoint in config.syndicate_to] if config.syndicate_to else None,
         )
     elif q == "syndicate-to":
@@ -46,7 +46,7 @@ async def micropub_query(
             syndicate_to=[endpoint.model_dump() for endpoint in config.syndicate_to] if config.syndicate_to else None
         )
     elif q == "media-endpoint":
-        return MicropubConfigResponse(media_endpoint=urljoin(str(config.site_url), "/media"))
+        return MicropubConfigResponse(media_endpoint=config.media_endpoint)
     elif q == "source":
         raise HTTPException(
             status_code=400,
