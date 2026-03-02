@@ -39,7 +39,7 @@ def replace_keys(obj, key_map: Dict[str, str]):
 
 def mf2_to_jekyll(mf2: Dict, mf2_to_replace: Dict):
     frontmatter = {}
-    keep_as_list = ("tags", "syndicate_to")
+    keep_as_list = ("tags", "syndicate_to", "photo")
 
     type = mf2.get("type", [])
     if type:
